@@ -1,0 +1,24 @@
+{
+  "help": "Yearly inputs that no free daily feed supplies. Edit a value here and commit it; the next update uses it. Keep as_of and source accurate, because the page shows them.",
+  "flow": {
+    "value": 38.2,
+    "unit": "billion tonnes of CO2 a year",
+    "as_of": "2026-11-10",
+    "source": "Global Carbon Budget 2026, projection for 2026",
+    "url": "https://globalcarbonbudget.org/"
+  },
+  "policy": {
+    "warming_2100_c": 2.7,
+    "zero_c": 1.5,
+    "midnight_c": 3.6,
+    "as_of": "2026-11",
+    "source": "Climate Action Tracker, warming under current policies (COP31 update)",
+    "url": "https://climateactiontracker.org/",
+    "rule": "A score of 0 means on track for 1.5 °C of warming by 2100. A score of 100 means on track for 3.6 °C, where current policies pointed in 2015."
+  },
+  "renewable_share_now_pct": {
+    "value": 32,
+    "as_of": "2024",
+    "source": "Ember, Global Electricity Review 2025 (2024 data). Check and update."
+  }
+}
