@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Reckoning Clock</title>
+<link rel="icon" href="data:,">
+<style>
+/* Idea: a calm instrument panel. A clean, solid world map is the page. Countries take the colour of their strongest
+   active alert; colour is spent only on data. Archivo is served from /fonts, so no third-party font request. */
+@font-face { font-family: 'Archivo'; src: url('fonts/archivo-latin-wdth-normal.woff2') format('woff2'); font-weight: 100 900; font-stretch: 62% 125%; font-style: normal; font-display: swap; }
+:root {
+  --ground: #0b1117;
+  --plate: #121b24;
+  --line: #223240;
+  --line-2: #5a7388;
+  --ink: #e8eef2;
+  --ink-2: #c0cdd6;
+  --ink-3: #9db0be;
+  --hot: #ff8a57;
+  --warm: #ffc29f;
+  --cold: #4db3e0;
+  --display: 'Archivo', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
+  --body: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background-color: var(--ground); color: var(--ink); font: 400 1rem/1.55 var(--body); }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 20px clamp(16px, 3vw, 40px) 80px; }
+[hidden] { display: none !important; }
+
+.top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 24px; margin-bottom: 6px; }
+h1 { margin: 0; font: 800 1.5rem/1.2 var(--display); letter-spacing: 0.01em; }
+.updated { margin: 0; color: var(--ink-3); font-size: 0.875rem; font-variant-numeric: tabular-nums; }
+.lede { max-width: 40rem; margin: 0 0 20px; color: var(--ink-2); font-size: 1.125rem; line-height: 1.45; }
+.sample { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 20px; color: var(--ink-2); font-size: 0.9375rem; }
+.tag { display: inline-block; padding: 2px 9px; border: 1px solid var(--line-2); border-radius: 2px; color: var(--ink); font-size: 0.8125rem; font-weight: 500; }
+.tag.dash { border-style: dashed; color: var(--ink-2); }
+.tag.hot { border-color: var(--ink); font-weight: 700; }
+.banner, .error { margin: 0 0 20px; padding: 12px 16px; border: 1px solid var(--hot); border-radius: 4px; }
+
+/* Plates */
+.hero { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "map" "detail" "drivers" "wi"; margin-bottom: 56px; }
+.s-map { grid-area: map; } .s-detail { grid-area: detail; } .s-drivers { grid-area: drivers; } .s-wi { grid-area: wi; }
+@media (min-width: 900px) {
+  .hero { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "map map" "detail drivers" "wi wi"; }
+}
+.plate { position: relative; min-width: 0; padding: 22px; background: var(--plate); border: 1px solid var(--line); border-radius: 4px; }
+@media (max-width: 600px) { .plate { padding: 16px 14px; } }
+.ph { margin: 0 0 10px; color: var(--ink-3); font-size: 0.875rem; font-weight: 600; }
+
+/* Score card. On wide screens it sits over the empty Pacific, bottom left of the map. */
+.mapplate { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "score" "head" "map" "legend"; }
+.score { grid-area: score; margin: 0 0 18px; padding: 0 0 18px; border-bottom: 1px solid var(--line); }
+.sc-top { display: flex; align-items: flex-end; gap: 12px; }
+.big { margin: 0; font: 800 clamp(6.5rem, 26vw, 8.25rem)/0.8 var(--display); letter-spacing: -0.01em; font-variant-numeric: lining-nums; }
+.sc-lab { padding-bottom: 6px; }
+.verdict { margin: 0; font: 700 1.125rem/1.2 var(--body); }
+.outof { margin: 0; color: var(--ink-3); font-size: 0.875rem; }
+.ruler { margin-top: 14px; }
+.rbar { position: relative; display: flex; gap: 2px; height: 8px; margin-top: 14px; }
+.rbar i { flex: 1 1 0; }
+.rbar i:nth-child(1) { background: #3a4c5c; } .rbar i:nth-child(2) { background: #b57a4a; } .rbar i:nth-child(3) { background: #ff8a57; } .rbar i:nth-child(4) { background: #ff4b2b; }
+.tick { position: absolute; top: -13px; left: 0; width: 0; height: 0; margin-left: -7px; border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 10px solid var(--ink); transition: left 0.5s ease; }
+.rlab { display: flex; margin-top: 8px; color: var(--ink-3); font-size: 0.8125rem; }
+.rlab span { flex: 1 1 0; }
+.rlab span.on { color: var(--ink); font-weight: 700; }
+.rcap { display: flex; justify-content: space-between; gap: 8px; margin-top: 2px; color: var(--ink-3); font-size: 0.75rem; }
+@media (min-width: 900px) {
+  .score { grid-area: map; align-self: end; justify-self: start; z-index: 2; width: 282px; margin: 0 0 14px 10px; padding: 20px 22px 22px; background: rgba(18, 27, 36, 0.93); border: 1px solid var(--line); border-radius: 4px; }
+}
+
+/* Map */
+.maphead { grid-area: head; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 24px; margin-bottom: 12px; }
+.maphead h2 { margin: 0 0 2px; font-size: 1.625rem; }
+.seg { display: inline-flex; border: 1px solid var(--ink-3); border-radius: 4px; overflow: hidden; }
+.seg button { min-height: 44px; padding: 8px 16px; border: 0; background: transparent; color: var(--ink); font: 600 0.9375rem var(--body); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--ink-3); }
+.seg button[aria-pressed=true] { background: var(--ink); color: var(--ground); }
+.seg button:disabled { opacity: 0.45; cursor: not-allowed; }
+.mapwrap { grid-area: map; position: relative; width: 100%; line-height: 0; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+.mapwrap svg { display: block; max-width: none; }
+.mapwrap .spot { cursor: pointer; outline: none; }
+.mapwrap .spot:focus-visible .hit { stroke: var(--ink); stroke-width: 1.5; }
+.legend { grid-area: legend; margin-top: 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+.people { margin: 0 0 12px; color: var(--ink-2); }
+.people b { color: var(--ink); font-weight: 700; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 14px; border: 1px solid var(--line-2); border-radius: 4px; background: transparent; color: var(--ink); font: 500 0.9375rem var(--body); cursor: pointer; }
+.chip[aria-pressed=false] { opacity: 0.5; }
+.gl { flex: none; }
+.keys { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; margin: 0 0 8px; color: var(--ink-2); font-size: 0.875rem; }
+.sw { display: inline-flex; gap: 2px; margin-right: 8px; vertical-align: middle; }
+.sw i { display: block; width: 22px; height: 12px; }
+.d-src { margin: 12px 0 0; font-size: 0.875rem; color: var(--ink-2); }
+.d-src a { color: var(--ink); }
+.tag.warn { border-color: var(--warm); }
+.hint { margin: 0; color: var(--ink-3); font-size: 0.875rem; }
+
+button:focus-visible, summary:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+button:hover:not([aria-pressed=true]):not(:disabled) { border-color: var(--ink); }
+
+/* Detail */
+.d-ppl { margin: 0 0 6px; font: 800 2.125rem/1.05 var(--display); }
+.d-title { margin: 0 0 12px; font-size: 1.0625rem; font-weight: 500; line-height: 1.4; }
+.d-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.d-tags .gl { margin-right: 6px; vertical-align: middle; }
+
+/* What-if */
+.help { margin: 0 0 6px; max-width: 38rem; color: var(--ink-2); }
+h2 { margin: 0 0 10px; font: 800 clamp(1.7rem, 4.5vw, 2.25rem)/1.05 var(--display); text-wrap: balance; }
+.wi-body { display: grid; gap: 4px 48px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 900px) { .wi-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.ctrl { margin: 18px 0 0; }
+.ctrl-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.ctrl label { font-weight: 500; }
+.ctrl output { font: 800 1.7rem/1 var(--display); font-variant-numeric: lining-nums; }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 32px; margin: 4px 0 0; background: transparent; cursor: pointer; }
+input[type=range]::-webkit-slider-runnable-track { height: 4px; background: var(--line-2); }
+input[type=range]::-moz-range-track { height: 4px; background: var(--line-2); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 24px; margin-top: -10px; background: var(--ink); border: 0; border-radius: 2px; }
+input[type=range]::-moz-range-thumb { width: 14px; height: 24px; background: var(--ink); border: 0; border-radius: 2px; }
+.results { display: grid; gap: 16px 24px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); margin: 18px 0 18px; padding: 0; }
+.results div { min-width: 0; }
+.results dt { color: var(--ink-3); font-size: 0.875rem; }
+.results dd { margin: 2px 0 0; font: 800 1.9rem/1.05 var(--display); font-variant-numeric: lining-nums; }
+.results dd.sm { margin-top: 4px; font: 400 0.9375rem/1.4 var(--body); color: var(--ink-2); }
+.btn { min-height: 44px; padding: 8px 18px; border: 1px solid var(--line-2); border-radius: 4px; background: transparent; color: var(--ink); font: 600 0.9375rem var(--body); cursor: pointer; }
+.fine { margin: 14px 0 0; max-width: 38rem; color: var(--ink-3); font-size: 0.8125rem; }
+
+/* Drivers */
+.drv { display: grid; gap: 22px 28px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin: 0; padding: 0; list-style: none; }
+.drv-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.drv-n { font-weight: 600; }
+.drv-w { color: var(--ink-3); font-size: 0.8125rem; }
+.drv-s { font: 800 1.7rem/1 var(--display); font-variant-numeric: lining-nums; }
+.bar { height: 6px; margin-top: 6px; background: #22313d; border-radius: 1px; overflow: hidden; }
+.bar > i { display: block; width: 0; height: 100%; background: var(--hot); transition: width 0.6s ease; }
+
+/* Sections below */
+.sec { margin: 0 0 56px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 6px; }
+.tab { min-height: 44px; padding: 8px 16px; border: 1px solid var(--line-2); border-radius: 4px; background: transparent; color: var(--ink-2); font: 600 0.9375rem var(--body); cursor: pointer; }
+.tab[aria-selected=true] { border-color: var(--ink); background: var(--ink); color: var(--ground); }
+.feed { margin: 0; padding: 0; list-style: none; }
+.feed li { padding: 16px 0 16px 16px; border-bottom: 1px solid var(--line); border-left: 2px solid var(--line); }
+.feed li.in { border-left-color: var(--hot); }
+.fi-title { margin: 0 0 8px; max-width: 42rem; font-size: 1.0625rem; font-weight: 500; }
+.fi-title a { color: inherit; text-decoration-color: var(--hot); text-underline-offset: 3px; }
+.fi-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0; color: var(--ink-3); font-size: 0.8125rem; }
+.method p { max-width: 42rem; margin: 0 0 12px; color: var(--ink-2); }
+.method p strong { color: var(--ink); font-weight: 600; }
+.tablewrap { margin: 18px 0; overflow-x: auto; }
+table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 0.875rem; }
+th { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line-2); color: var(--ink-3); font-weight: 600; text-align: left; }
+td { padding: 10px 14px 10px 0; border-bottom: 1px solid var(--line); vertical-align: top; font-variant-numeric: tabular-nums; }
+.guard { max-width: 42rem; margin: 0 0 12px; padding-left: 1.2em; color: var(--ink-2); }
+.guard li { margin-bottom: 6px; }
+
+/* Game */
+.sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.game { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "dash" "main" "chart"; align-items: start; margin-top: 18px; }
+@media (min-width: 980px) { .game { grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: auto 1fr; grid-template-areas: "main dash" "main chart"; gap: 24px; } }
+.g-dash { grid-area: dash; } .g-main { grid-area: main; min-width: 0; } .g-chart { grid-area: chart; }
+.g-term { margin: 0 0 2px; font: 800 2rem/1 var(--display); letter-spacing: 0.01em; outline: none; }
+.g-years { margin: 0 0 14px; color: var(--ink-2); }
+.g-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 14px; }
+.g-row b { font-weight: 600; }
+.g-row span { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.pips { display: inline-flex; flex: none; gap: 4px; vertical-align: middle; }
+.pip { width: 11px; height: 11px; background: var(--warm); }
+.pip.off { background: transparent; border: 1px solid var(--line-2); }
+.g-cards { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); margin: 0 0 14px; }
+.g-card { display: flex; flex-direction: column; gap: 8px; min-height: 44px; padding: 14px; border: 1px solid var(--line-2); border-radius: 4px; background: var(--plate); color: var(--ink); font: 400 1rem/1.4 var(--body); text-align: left; cursor: pointer; }
+.g-card[aria-pressed=true] { border-color: var(--hot); background: #1b2733; box-shadow: inset 3px 0 0 var(--hot); }
+.g-card:disabled { opacity: 0.55; cursor: not-allowed; }
+.g-card .g-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.g-name { font-weight: 600; }
+.g-blurb { color: var(--ink-2); font-size: 0.9375rem; }
+.g-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: auto; color: var(--ink-2); font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+.g-in { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 14px; color: var(--ink-3); font-size: 0.875rem; }
+.g-bar { position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px 14px; background: var(--plate); border: 1px solid var(--line-2); border-radius: 4px; }
+.g-nums { display: flex; flex-wrap: wrap; gap: 6px 22px; }
+.g-nums div { min-width: 0; }
+.g-nums dt { color: var(--ink-3); font-size: 0.8125rem; }
+.g-nums dd { margin: 0; font: 800 1.5rem/1.05 var(--display); letter-spacing: 0.01em; font-variant-numeric: lining-nums; }
+.g-nums dd small { display: block; font: 400 0.8125rem/1.3 var(--body); color: var(--ink-2); letter-spacing: 0; }
+.btn.pri { background: var(--ink); border-color: var(--ink); color: var(--ground); }
+.btn.pri:hover:not(:disabled) { background: #fff; }
+.g-verdict { margin: 0 0 4px; font: 900 clamp(2.6rem, 9vw, 4.6rem)/0.9 var(--display); letter-spacing: 0.005em; outline: none; text-wrap: balance; }
+.g-hist { margin: 14px 0; padding: 0; list-style: none; }
+.g-hist li { padding: 8px 0; border-top: 1px solid var(--line); color: var(--ink-2); }
+.g-hist b { color: var(--ink); font-weight: 600; }
+.g-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 18px; }
+.g-chartwrap { position: relative; }
+.g-chartwrap svg { display: block; width: 100%; height: auto; touch-action: pan-y; }
+.ct { fill: var(--ink-3); font: 500 11px var(--body); }
+.cv { font: 700 12px var(--body); }
+.cg { stroke: var(--line); stroke-width: 1; }
+.c-base { fill: none; stroke: var(--ink-3); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.c-you { fill: none; stroke: var(--hot); stroke-width: 2.5; stroke-linejoin: round; }
+.c-cross { stroke: var(--ink-3); stroke-width: 1; }
+.g-tip { position: absolute; top: 0; z-index: 3; max-width: 70%; padding: 6px 9px; background: var(--ground); border: 1px solid var(--line-2); font-size: 0.8125rem; line-height: 1.35; pointer-events: none; transform: translateX(-50%); }
+.lg { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 8px 0 0; color: var(--ink-2); font-size: 0.8125rem; }
+.lg span { display: inline-flex; align-items: center; gap: 7px; }
+.lg i { display: inline-block; width: 22px; height: 0; border-top: 2px solid var(--hot); }
+.lg i.b { border-top: 2px dashed var(--ink-3); }
+
+h1, h2, .d-ppl, .ctrl output, .results dd, .drv-s, .g-term, .g-nums dd, .g-verdict { font-stretch: 75%; }
+.big { font-stretch: 62%; }
+.results dd.sm, .g-nums dd small { font-stretch: 100%; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>The Reckoning Clock</h1>
+    <p class="updated"><span id="updated"></span> <span id="next"></span></p>
+  </header>
+  <p class="lede" id="sub"></p>
+  <p class="sample" id="sampleNote" hidden><span class="tag">Sample data</span> These figures are placeholders. Live feeds are not connected yet.</p>
+
+  <p class="banner" id="pausedBanner" role="status" hidden>The map is paused. The figures below are from the last verified update.</p>
+  <p class="banner" id="staleBanner" role="status" hidden></p>
+  <p class="error" id="loadError" role="alert" hidden>The map data could not be loaded. Reload the page to try again.</p>
+  <noscript><p class="error">This page needs JavaScript to draw the map.</p></noscript>
+
+  <main class="hero">
+    <section class="plate s-map mapplate" aria-labelledby="mapH">
+      <div class="score" role="group" aria-label="Planet status">
+        <div class="sc-top">
+          <p class="big" id="big">--</p>
+          <div class="sc-lab"><p class="verdict" id="verdict"></p><p class="outof">out of 100</p></div>
+        </div>
+        <div class="ruler">
+          <div class="rbar" aria-hidden="true"><i></i><i></i><i></i><i></i><b class="tick" id="tick"></b></div>
+          <div class="rlab" aria-hidden="true"><span>Low</span><span>Elevated</span><span>High</span><span>Extreme</span></div>
+          <div class="rcap"><span>0 starting line</span><span>100 worst case in 2050</span></div>
+        </div>
+      </div>
+      <div class="maphead">
+        <div>
+          <h2 id="mapH">Where alerts are active</h2>
+          <p class="hint" id="mapSub"></p>
+        </div>
+        <div class="seg" role="group" aria-label="Time">
+          <button type="button" id="mNow" aria-pressed="true">Now</button>
+          <button type="button" id="m50" aria-pressed="false">2050 on your path</button>
+        </div>
+      </div>
+      <div class="mapwrap" id="mapwrap" role="group" aria-label="World map of active hazard alerts"><svg id="ov"></svg></div>
+      <div class="legend">
+        <p class="people" id="people"></p>
+        <div class="chips" id="chips" role="group" aria-label="Hazards"></div>
+        <div class="keys" aria-hidden="true">
+          <span><span class="sw"><i style="background:#ffc29f"></i><i style="background:#ff8a57"></i><i style="background:#e5431b"></i></span>Heat and fire</span>
+          <span><span class="sw"><i style="background:#a8e1f5"></i><i style="background:#4db3e0"></i><i style="background:#2487bf"></i></span>Floods and storms</span>
+          <span>Paler to darker: moderate, severe, extreme. India is outlined.</span>
+        </div>
+        <p class="hint" id="mapHint"></p>
+      </div>
+    </section>
+
+    <section class="plate s-detail" aria-label="Selected hotspot">
+      <p class="ph">Selected alert</p>
+      <p class="d-ppl" id="dPpl">--</p>
+      <p class="d-title" id="dTitle"></p>
+      <div class="d-tags" id="dTags"></div>
+      <p class="d-src" id="dSrc"></p>
+    </section>
+
+    <section class="plate s-drivers" aria-labelledby="drvH">
+      <p class="ph" id="drvH">What moves the score</p>
+      <ul class="drv" id="drivers"></ul>
+    </section>
+
+    <section class="plate s-wi" aria-labelledby="wiH">
+      <h2 id="wiH">What if we act?</h2>
+      <p class="help">Move a slider and the map switches to 2050 on your chosen path.</p>
+      <div class="wi-body">
+        <div>
+          <div class="ctrl">
+            <div class="ctrl-top"><label for="cut">Cut global emissions by 2050</label><output id="cutOut" for="cut">20%</output></div>
+            <input type="range" id="cut" min="0" max="100" step="1" value="20">
+            <p class="hint" id="cutHint"></p>
+          </div>
+          <div class="ctrl">
+            <div class="ctrl-top"><label for="ren">Renewable share of electricity in 2050</label><output id="renOut" for="ren">55%</output></div>
+            <input type="range" id="ren" min="32" max="100" step="1" value="55">
+            <p class="hint" id="renHint"></p>
+          </div>
+        </div>
+        <div>
+          <dl class="results">
+            <div><dt>Score in 2050</dt><dd id="wiScore">--</dd><dd class="sm" id="wiSub">&nbsp;</dd></div>
+            <div><dt>Warming in 2050</dt><dd id="wiT50">--</dd></div>
+            <div><dt>Warming in 2100 if emissions then hold</dt><dd id="wiT100">--</dd></div>
+          </dl>
+          <button type="button" class="btn" id="reset">Reset to current path</button>
+        </div>
+      </div>
+      <p class="fine">The starting point is a rough current-policies path. This is an illustrative model in which warming follows cumulative CO₂. It is not a forecast.</p>
+    </section>
+  </main>
+
+  <section class="sec" id="gameSec" aria-labelledby="gH" hidden>
+    <h2 id="gH">Be the world leader</h2>
+    <p class="help">Lead the world through four six-year terms, from 2026 to 2050. Spend political capital on policies, keep the public with you, and see how far you can bend the curve.</p>
+    <div class="game" id="game"></div>
+  </section>
+
+  <section class="sec" aria-labelledby="feedH">
+    <h2 id="feedH">Latest developments</h2>
+    <p class="help" id="feedNote"></p>
+    <div class="tabs" role="tablist" aria-label="Topics" id="tabs"></div>
+    <ul class="feed" id="feedList" role="tabpanel"></ul>
+  </section>
+
+  <section class="sec method" aria-labelledby="mH">
+    <h2 id="mH">How the score is calculated</h2>
+    <div id="method"></div>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script src="clock-core.js"></script>
+<script>
+(function () {
+  'use strict';
+  var C = window.ClockCore;
+  var NS = 'http://www.w3.org/2000/svg';
+  var calm = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var NAME = { heat: 'Heatwave', fire: 'Wildfire', flood: 'Flood', storm: 'Cyclone' };
+  var CHIPNAME = { heat: 'Heat', fire: 'Fires', flood: 'Floods', storm: 'Storms' };
+  var TYPES = ['heat', 'fire', 'flood', 'storm'];
+  var SEV = ['', 'Moderate', 'Severe', 'Extreme'];
+
+  var state = null, world = null, borders = null, mode = 'now', sel = 0, wi = null, map = null;
+  var enabled = { heat: true, fire: true, flood: true, storm: true };
+  var booted = false, activeTab = null, nextBoundary = 0, resizeT = 0, wiSource = 'sliders';
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function svgEl(tag, attrs) { var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); return e; }
+  function fmt(n, d) { return Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+  function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+  function clamp(x, a, b) { return Math.min(b, Math.max(a, x)); }
+  function isIndia(r) { return /\bIndia\b/.test(r || ''); }
+  function hasPeople(h) { return h.people_m !== null && h.people_m !== undefined; }
+  /* Marker size: people affected when the source gives it, otherwise the alert level. */
+  function radius(h) { return Math.max(7, hasPeople(h) ? 5 + Math.sqrt(h.people_m) * 1.1 : 6 + h.sev * 2.2); }
+  function ppl(m) { return m >= 1 ? (m < 10 ? m.toFixed(1) : String(Math.round(m))) + ' million' : Math.round(m * 1000) + ' thousand'; }
+  function when(iso) { return new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); }
+  function day(s) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return new Date(s + 'T00:00:00').toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+    if (/^\d{4}-\d{2}$/.test(s)) return new Date(s + '-01T00:00:00').toLocaleDateString([], { month: 'short', year: 'numeric' });
+    return String(s);
+  }
+  function statusTag(s) { return s === 'stale' ? 'Last good value' : s === 'unavailable' ? 'No data' : s === 'manual' ? 'Updated yearly' : ''; }
+
+  /* Colours. Countries take the colour of their strongest active alert: warm for heat and fire, blue for floods and storms. */
+  var HOTC = ['#ffc29f', '#ff8a57', '#e5431b'], COLDC = ['#a8e1f5', '#4db3e0', '#2487bf'];
+  var GROUP = { heat: 'hot', fire: 'hot', flood: 'cold', storm: 'cold' };
+  var BAND = ['#8fa6b8', '#d9a06f', '#ff8a57', '#ff4b2b'];
+  var GROUND = '#0b1117', INK = '#e8eef2';
+  function hexRgb(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+  function mix(a, b, t) { var x = hexRgb(a), y = hexRgb(b); return 'rgb(' + Math.round(x[0] + (y[0] - x[0]) * t) + ',' + Math.round(x[1] + (y[1] - x[1]) * t) + ',' + Math.round(x[2] + (y[2] - x[2]) * t) + ')'; }
+  function bandIdx(r) { return r < 25 ? 0 : r < 50 ? 1 : r < 75 ? 2 : 3; }
+  function bandColor(r) { return BAND[bandIdx(r)]; }
+  function liveRisk() { return state.headline && isFinite(state.headline.risk) ? state.headline.risk : C.compute(state).risk; }
+  function currentRisk() { return mode === '2050' && wi ? wi.risk : liveRisk(); }
+  /* In the 2050 view the land warms when the projected score is above today's. */
+  function landColor() { return mix('#26343f', '#5c3c34', mode === '2050' && wi ? clamp((wi.risk - liveRisk()) / 25, 0, 1) : 0); }
+
+  /* Hazard shapes: circle heat, diamond fire, square flood, triangle storm. */
+  function shapeEl(type, r, a) {
+    var e, k;
+    if (type === 'heat') e = svgEl('circle', { r: r });
+    else if (type === 'fire') { k = r * 1.2; e = svgEl('polygon', { points: '0,' + (-k) + ' ' + k + ',0 0,' + k + ' ' + (-k) + ',0' }); }
+    else if (type === 'storm') { k = r * 1.1; e = svgEl('polygon', { points: '0,' + (-k) + ' ' + k + ',' + (k * 0.8) + ' ' + (-k) + ',' + (k * 0.8) }); }
+    else { k = r * 0.9; e = svgEl('rect', { x: -k, y: -k, width: 2 * k, height: 2 * k }); }
+    for (var n in a) e.setAttribute(n, a[n]);
+    return e;
+  }
+  function glyph(type) {
+    var s = svgEl('svg', { width: 20, height: 20, viewBox: '-10 -10 20 20', class: 'gl', 'aria-hidden': 'true' });
+    s.appendChild(shapeEl(type, 6.5, { fill: GROUND, stroke: INK, 'stroke-width': 1.8, 'stroke-linejoin': 'round' }));
+    return s;
+  }
+
+  /* Map: solid countries, an outline for India, one marker per alert. */
+  var lands = [], hsLand = [], shapes = [], markers = [];
+  function buildMap() {
+    if (!world || !state) return;
+    var wrap = $('mapwrap'), cw = Math.floor(wrap.clientWidth), narrow = cw < 560, W = Math.max(280, narrow ? Math.round(cw * 1.8) : cw);
+    var feats = world.features.filter(function (f) { return f.id !== '010'; });
+    var fc = { type: 'FeatureCollection', features: feats };
+    var proj = d3.geoEqualEarth().fitWidth(W - 4, fc), gp = d3.geoPath(proj).digits(1), b = gp.bounds(fc), t = proj.translate();
+    proj.translate([t[0] + 2 - b[0][0], t[1] + 2 - b[0][1]]);
+    gp = d3.geoPath(proj).digits(1); b = gp.bounds(fc);
+    var H = Math.ceil(b[1][1] + 2), svg = $('ov'); clear(svg);
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('width', W); svg.setAttribute('height', H);
+    map = { W: W, H: H, proj: proj, cw: cw, narrow: narrow };
+
+    var land = svgEl('g', { 'aria-hidden': 'true' }); lands = [];
+    feats.forEach(function (f) { var p = svgEl('path', { d: gp(f) }); land.appendChild(p); lands.push({ f: f, el: p }); });
+    svg.appendChild(land);
+    var edge = svgEl('g', { fill: 'none', 'aria-hidden': 'true', 'pointer-events': 'none' });
+    if (borders) edge.appendChild(svgEl('path', { d: gp(borders), stroke: GROUND, 'stroke-width': 0.8, 'stroke-linejoin': 'round' }));
+    var india = feats.filter(function (f) { return f.id === '356'; })[0];
+    if (india) edge.appendChild(svgEl('path', { d: gp(india), stroke: INK, 'stroke-width': 1.6, 'stroke-linejoin': 'round' }));
+    svg.appendChild(edge);
+    wrap.scrollLeft = narrow && india ? Math.max(0, gp.centroid(india)[0] - cw / 2) : 0;
+
+    /* Which country holds each alert. An alert out at sea belongs to none and shows as a marker only. */
+    hsLand = state.hotspots.map(function (h) {
+      for (var i = 0; i < lands.length; i++) if (d3.geoContains(lands[i].f, [h.lon, h.lat])) return i;
+      return -1;
+    });
+
+    var gm = svgEl('g', { id: 'marks' }); markers = []; shapes = [];
+    var bySize = state.hotspots.map(function (h, i) { return i; }).sort(function (a, c) { return radius(state.hotspots[c]) - radius(state.hotspots[a]); });
+    bySize.forEach(function (i) {
+      var h = state.hotspots[i], p = proj([h.lon, h.lat]), r = radius(h);
+      var g = svgEl('g', { transform: 'translate(' + p[0].toFixed(1) + ',' + p[1].toFixed(1) + ')', class: 'spot', tabindex: 0, role: 'button', 'aria-label': NAME[h.type] + ', ' + (hasPeople(h) ? ppl(h.people_m) + ' people affected' : SEV[h.sev] + ' alert') + ', ' + h.region + '. ' + h.title });
+      var sh = shapeEl(h.type, r, { fill: GROUND, stroke: INK, 'stroke-width': 2, 'stroke-linejoin': 'round' });
+      g.appendChild(sh);
+      g.appendChild(svgEl('circle', { class: 'hit', r: Math.max(22, r + 8), fill: 'transparent', stroke: 'none' }));
+      g.addEventListener('click', function () { showSpot(i); });
+      g.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showSpot(i); } });
+      gm.appendChild(g); markers[i] = g; shapes[i] = sh;
+    });
+    svg.appendChild(gm);
+    var ret = svgEl('g', { id: 'ret', 'pointer-events': 'none' });
+    ret.appendChild(svgEl('circle', { id: 'retp', fill: 'none', stroke: INK, 'stroke-width': 1.6, 'stroke-dasharray': '3 3' }));
+    ret.appendChild(svgEl('text', { id: 'retl', fill: INK, 'font-size': 12, 'font-weight': 600, 'font-family': 'Archivo, Arial, sans-serif', stroke: GROUND, 'stroke-width': 3, 'paint-order': 'stroke' }));
+    svg.appendChild(ret);
+    placeReticle();
+  }
+  /* Colour each country by its strongest enabled alert. In the 2050 view there is no country-level projection,
+     so today's alerts are faded and only the land warms with the score. */
+  function paintMap() {
+    if (!map) return;
+    var is50 = mode === '2050', base = landColor(), top = {};
+    state.hotspots.forEach(function (h, i) {
+      var li = hsLand[i]; if (li < 0 || !enabled[h.type]) return;
+      if (!top[li] || h.sev > top[li].sev) top[li] = { sev: h.sev, g: GROUP[h.type] };
+    });
+    lands.forEach(function (L, i) {
+      var a = top[i];
+      L.el.setAttribute('fill', a ? (a.g === 'hot' ? HOTC : COLDC)[clamp(a.sev, 1, 3) - 1] : base);
+      L.el.setAttribute('fill-opacity', a && is50 ? 0.4 : 1);
+    });
+    var gm = $('marks'); if (gm) gm.setAttribute('opacity', is50 ? 0.5 : 1);
+  }
+  function placeReticle() {
+    if (!map || !state.hotspots[sel]) return;
+    var h = state.hotspots[sel], p = map.proj([h.lon, h.lat]), r = radius(h), s = r + 8, x = p[0], y = p[1];
+    var ring = $('retp'); ring.setAttribute('cx', x); ring.setAttribute('cy', y); ring.setAttribute('r', s);
+    var lab = $('retl'), right = x < map.W * 0.7;
+    lab.textContent = h.region; lab.setAttribute('x', right ? x + s + 6 : x - s - 6); lab.setAttribute('y', y + 4); lab.setAttribute('text-anchor', right ? 'start' : 'end');
+    shapes.forEach(function (sh, i) { sh.setAttribute('fill', i === sel ? INK : GROUND); sh.setAttribute('stroke', i === sel ? GROUND : INK); });
+    $('ret').style.display = enabled[h.type] ? '' : 'none';
+  }
+
+  /* Panels */
+  function showSpot(i) {
+    sel = i;
+    var h = state.hotspots[i], tags = $('dTags'), src = $('dSrc'); clear(tags); clear(src);
+    if (!h) {
+      $('dPpl').textContent = 'No alerts';
+      $('dTitle').textContent = 'No orange or red hazard alerts are active right now.';
+      return;
+    }
+    $('dPpl').textContent = hasPeople(h) ? ppl(h.people_m) + ' people affected' : (h.alert ? h.alert + ' alert' : SEV[h.sev]);
+    $('dTitle').textContent = h.title;
+    var t = el('span', 'tag'); t.appendChild(glyph(h.type)); t.appendChild(document.createTextNode(NAME[h.type])); tags.appendChild(t);
+    if (hasPeople(h)) tags.appendChild(el('span', 'tag', SEV[h.sev]));
+    tags.appendChild(el('span', 'tag' + (isIndia(h.region) ? ' hot' : ''), h.region));
+    if (h.sample) tags.appendChild(el('span', 'tag dash', 'Sample'));
+    tags.appendChild(el('span', 'tag dash', when(h.published)));
+    if (h.url) {
+      src.appendChild(document.createTextNode('Source: '));
+      var a = el('a', null, h.source); a.href = h.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; src.appendChild(a);
+    } else if (h.source) src.textContent = 'Source: ' + h.source;
+    placeReticle();
+  }
+  function band(r) { return r < 25 ? 'Low risk' : r < 50 ? 'Elevated risk' : r < 75 ? 'High risk' : 'Extreme risk'; }
+  function dataNotice() {
+    var stale = [], gone = [];
+    state.indicators.physical.concat(state.indicators.emissions).forEach(function (i) {
+      if (i.status === 'stale') stale.push(i.label + ' (from ' + day(i.as_of) + ')');
+      else if (i.status === 'unavailable') gone.push(i.label);
+    });
+    ['policy', 'events'].forEach(function (k) {
+      var i = state.indicators[k];
+      if (i.status === 'stale') stale.push(state.pillars[k].label);
+      else if (i.status === 'unavailable') gone.push(state.pillars[k].label);
+    });
+    var parts = [];
+    if (stale.length) parts.push('Still showing the last good reading for ' + stale.join(', ') + '.');
+    if (gone.length) parts.push('No reading, so left out of the score: ' + gone.join(', ') + '.');
+    return parts.join(' ');
+  }
+  function paintStatus() {
+    var r = currentRisk(), bi = bandIdx(r);
+    $('big').textContent = Math.round(r); $('big').style.color = bandColor(r);
+    $('verdict').textContent = band(r);
+    $('tick').style.left = clamp(r, 0, 100) + '%';
+    Array.prototype.forEach.call(document.querySelectorAll('.rlab span'), function (e, i) { e.className = i === bi ? 'on' : ''; });
+    $('sub').textContent = mode === 'now'
+      ? 'How far the planet has moved from the starting line toward a high-emissions world in 2050.'
+      : 'The projected score in 2050 on your ' + (wiSource === 'game' ? 'world-leader' : 'chosen') + ' path. It is illustrative, not a forecast.';
+    $('mapSub').textContent = mode === 'now'
+      ? 'Each country takes the colour of its strongest orange or red alert.'
+      : 'There is no country-level projection for 2050, so today’s alerts are faded. The land turns warmer when your path scores higher than today.';
+    var vis = state.hotspots.filter(function (h) { return enabled[h.type]; });
+    var p = $('people'); clear(p);
+    if (mode === 'now') {
+      var known = vis.filter(hasPeople);
+      if (!vis.length) {
+        p.appendChild(el('b', null, 'None. '));
+        p.appendChild(document.createTextNode(state.hotspots.length ? 'No hazards selected.' : 'No orange or red hazard alerts right now.'));
+      } else if (known.length === vis.length) {
+        p.appendChild(el('b', null, ppl(known.reduce(function (a, h) { return a + h.people_m; }, 0))));
+        p.appendChild(document.createTextNode(' people affected right now across ' + vis.length + ' hotspots.'));
+      } else {
+        p.appendChild(el('b', null, String(vis.length)));
+        p.appendChild(document.createTextNode(' active orange and red hazard alerts. The alert source does not say how many people are affected.'));
+      }
+    } else {
+      p.appendChild(document.createTextNode('Switch back to Now to see today’s alerts at full strength.'));
+    }
+    var d = new Date(state.updated_at);
+    $('updated').textContent = 'Updated ' + d.toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + '.';
+    $('sampleNote').hidden = state.data_mode !== 'sample';
+    $('pausedBanner').hidden = !state.kill_switch;
+    var note = state.data_mode === 'sample' ? '' : dataNotice();
+    $('staleBanner').textContent = note; $('staleBanner').hidden = !note;
+    $('mapwrap').setAttribute('aria-label', 'World map of active hazard alerts. Countries with an orange or red alert are coloured: warm for heat and fire, blue for floods and storms. Outlined markers show each alert.');
+    var anyPeople = state.hotspots.some(hasPeople);
+    var off = (state.hazard_types || []).filter(function (t) { return !t.connected; }).map(function (t) { return t.label.toLowerCase(); });
+    $('mapHint').textContent = 'Outlined markers show each alert. ' + (anyPeople ? 'Larger means more people affected. ' : 'Larger means a higher alert level. ') + 'Tap one for details.' +
+      (map && map.narrow ? ' Swipe the map sideways to see all of it.' : '') + (off.length ? ' Not connected yet: ' + off.join(', ') + '.' : '');
+  }
+  function paintDrivers() {
+    var src = mode === '2050' && wi ? wi : C.compute(state), host = $('drivers'); clear(host);
+    ['physical', 'emissions', 'policy', 'events'].forEach(function (k) {
+      var li = el('li'), top = el('div', 'drv-top'), left = el('div'), v = src[k], none = v === null || v === undefined;
+      left.appendChild(el('span', 'drv-n', state.pillars[k].label));
+      left.appendChild(el('div', 'drv-w', none ? 'No reading, left out of the score' : Math.round(state.weights[k] * 100) + '% of the score'));
+      top.appendChild(left); top.appendChild(el('span', 'drv-s', none ? '--' : String(Math.round(v))));
+      li.appendChild(top);
+      var bar = el('div', 'bar'), fill = el('i'); fill.style.width = none ? '0%' : Math.round(v) + '%';
+      bar.appendChild(fill); li.appendChild(bar); host.appendChild(li);
+    });
+  }
+  function resetSliders() {
+    var w = state.whatif;
+    $('cut').value = w.default_cut_pct; $('ren').min = w.renewable_share_now; $('ren').value = w.default_renewable_pct;
+    $('cutHint').textContent = 'Today the world emits about ' + fmt(w.emissions_now_gt, 0) + ' billion tonnes of CO₂ a year.';
+    $('renHint').textContent = 'Today about ' + fmt(w.renewable_share_now, 0) + '% of electricity comes from renewables.';
+  }
+  function updateWhatIf() {
+    var cut = +$('cut').value, ren = +$('ren').value;
+    wi = C.whatIf(state, cut, ren); wiSource = 'sliders';
+    var off = !wi;
+    $('cut').disabled = off; $('ren').disabled = off; $('reset').disabled = off; $('m50').disabled = off;
+    $('cutOut').textContent = cut + '%'; $('renOut').textContent = ren + '%';
+    if (off) {
+      $('wiScore').textContent = '--'; $('wiSub').textContent = 'Needs a current temperature and CO₂ reading';
+      $('wiT50').textContent = '--'; $('wiT100').textContent = '--';
+      if (mode === '2050') { mode = 'now'; $('mNow').setAttribute('aria-pressed', 'true'); $('m50').setAttribute('aria-pressed', 'false'); }
+      return;
+    }
+    var p = wi.projection, diff = wi.risk - liveRisk();
+    $('cut').setAttribute('aria-valuetext', cut + ' percent'); $('ren').setAttribute('aria-valuetext', ren + ' percent');
+    $('wiScore').textContent = Math.round(wi.risk) + ' of 100';
+    $('wiSub').textContent = Math.abs(diff) < 0.5 ? 'about the same as now' : fmt(Math.abs(diff), 0) + ' points ' + (diff > 0 ? 'higher than now' : 'lower than now');
+    $('wiT50').textContent = fmt(p.temp2050, 2) + ' °C';
+    $('wiT100').textContent = fmt(p.temp2100, 1) + ' °C';
+  }
+  function refresh() { paintStatus(); paintDrivers(); paintMap(); }
+  function setMode(m) {
+    mode = m;
+    $('mNow').setAttribute('aria-pressed', m === 'now' ? 'true' : 'false');
+    $('m50').setAttribute('aria-pressed', m === '2050' ? 'true' : 'false');
+    refresh();
+  }
+  function buildChips() {
+    var host = $('chips'); clear(host);
+    var types = (state.hazard_types || [{ id: 'heat', connected: true }, { id: 'fire', connected: true }, { id: 'flood', connected: true }]).filter(function (t) { return t.connected; });
+    types.forEach(function (ty) {
+      var t = ty.id, n = state.hotspots.filter(function (h) { return h.type === t; }).length;
+      var b = el('button', 'chip'); b.type = 'button'; b.setAttribute('aria-pressed', enabled[t] ? 'true' : 'false');
+      b.appendChild(glyph(t)); b.appendChild(el('span', null, CHIPNAME[t] + ' ' + n));
+      b.addEventListener('click', function () {
+        enabled[t] = !enabled[t]; b.setAttribute('aria-pressed', enabled[t] ? 'true' : 'false');
+        markers.forEach(function (g, i) { g.style.display = enabled[state.hotspots[i].type] ? '' : 'none'; });
+        var cur = state.hotspots[sel];
+        if (cur && !enabled[cur.type]) { for (var i = 0; i < state.hotspots.length; i++) if (enabled[state.hotspots[i].type]) { showSpot(i); break; } }
+        else placeReticle();
+        refresh();
+      });
+      host.appendChild(b);
+    });
+  }
+
+  /* Feed */
+  function paintFeed() {
+    var sections = state.sections;
+    if (!activeTab || !sections.some(function (s) { return s.id === activeTab; })) activeTab = sections[0].id;
+    var tabs = $('tabs'); clear(tabs);
+    sections.forEach(function (s) {
+      var b = el('button', 'tab', s.label); b.type = 'button'; b.setAttribute('role', 'tab'); b.id = 'tab-' + s.id;
+      b.setAttribute('aria-selected', s.id === activeTab ? 'true' : 'false'); b.tabIndex = s.id === activeTab ? 0 : -1;
+      b.addEventListener('click', function () { activeTab = s.id; paintFeed(); });
+      b.addEventListener('keydown', function (e) {
+        var i = sections.findIndex(function (x) { return x.id === s.id; });
+        if (e.key === 'ArrowRight') i = (i + 1) % sections.length; else if (e.key === 'ArrowLeft') i = (i + sections.length - 1) % sections.length; else return;
+        e.preventDefault(); activeTab = sections[i].id; paintFeed(); $('tab-' + activeTab).focus();
+      });
+      tabs.appendChild(b);
+    });
+    var list = $('feedList'); clear(list); list.setAttribute('aria-labelledby', 'tab-' + activeTab);
+    var all = Object.keys(state.feed).reduce(function (a, k) { return a.concat(state.feed[k]); }, []);
+    var h = state.health;
+    $('feedNote').textContent = state.data_mode === 'sample' || (all.length && all.every(function (i) { return i.sample; }))
+      ? 'These entries are placeholders. Real items from trusted sources appear once the update job is connected.'
+      : 'Collected automatically from trusted sources and sorted into sections by fixed keyword rules. Each item links to its original.' +
+        (h && h.feeds_total ? ' ' + h.feeds_ok + ' of ' + h.feeds_total + ' sources answered on the last check.' : '');
+    if (state.kill_switch) { list.appendChild(el('li', null, 'The news list is hidden while the map is paused.')); return; }
+    if (!(state.feed[activeTab] || []).length) list.appendChild(el('li', null, 'Nothing new in this section in the last 14 days.'));
+    (state.feed[activeTab] || []).forEach(function (it) {
+      var li = el('li', isIndia(it.region) ? 'in' : ''), t = el('p', 'fi-title');
+      if (it.url) { var a = el('a', null, it.title); a.href = it.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; t.appendChild(a); } else t.textContent = it.title;
+      li.appendChild(t);
+      var meta = el('p', 'fi-meta');
+      meta.appendChild(el('span', 'tag' + (isIndia(it.region) ? ' hot' : ''), it.region));
+      if (it.sample) meta.appendChild(el('span', 'tag dash', 'Sample'));
+      meta.appendChild(el('span', null, it.source)); meta.appendChild(el('span', null, when(it.published)));
+      li.appendChild(meta); list.appendChild(li);
+    });
+  }
+
+  /* Method */
+  function paintMethod() {
+    var host = $('method'); clear(host);
+    var w = state.weights, sc = state.scenario;
+    function p(html) { var e = el('p'); e.innerHTML = html; host.appendChild(e); }
+    p('Each input is scored from <strong>0</strong> at its starting line to <strong>100</strong> at its value in the 2050 worst-case world. The score blends four inputs: ' +
+      Math.round(w.physical * 100) + '% physical climate, ' + Math.round(w.emissions * 100) + '% emissions, ' + Math.round(w.policy * 100) + '% policy and ' + Math.round(w.events * 100) + '% extreme events. An input with no reading is left out and the others share its weight.');
+    p('The map colours each country by its strongest active orange or red alert: warm for heat and fire, blue for floods and storms, paler to darker for moderate to extreme. An alert at sea shows as a marker only. Markers are sized by people affected, or by alert level when that is not published. There is no country-level projection for 2050, so in that view today\u2019s alerts are faded and the land turns warmer when the projected score is above today\u2019s.');
+    p('The worst case is the ' + sc.year + ' ' + sc.name.replace(/ \d{4} world$/, '').toLowerCase() + ' world (' + sc.basis + ').' + (sc.status === 'proposed' ? ' These scale values are proposed and not yet approved.' : ''));
+    var wrap = el('div', 'tablewrap'), tbl = el('table'), head = el('tr');
+    ['Input', 'Now', 'Scale', 'Share of the score', 'Source', 'Updates'].forEach(function (h) { head.appendChild(el('th', null, h)); });
+    var thead = el('thead'); thead.appendChild(head); tbl.appendChild(thead);
+    var tb = el('tbody');
+    function srcCell(i) {
+      var c = el('span');
+      if (i.url) { var a = el('a', null, i.source); a.href = i.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; c.appendChild(a); } else c.textContent = i.source;
+      if (i.as_of) c.appendChild(document.createTextNode(', ' + day(i.as_of)));
+      return c;
+    }
+    function row(cells) { var tr = el('tr'); cells.forEach(function (c) { var td = el('td'); if (typeof c === 'string') td.textContent = c; else td.appendChild(c); tr.appendChild(td); }); tb.appendChild(tr); }
+    ['physical', 'emissions'].forEach(function (k) {
+      var list = state.indicators[k];
+      list.forEach(function (i) {
+        var now = i.value === null || i.value === undefined ? 'No data' : fmt(i.value, i.decimals) + ' ' + i.short + (statusTag(i.status) && i.status !== 'manual' ? ' (' + statusTag(i.status).toLowerCase() + ')' : '');
+        row([i.label, now, fmt(i.zero, i.decimals) + ' to ' + fmt(i.midnight, i.decimals) + ' ' + i.short, fmt(w[k] / list.length * 100, 1) + '%', srcCell(i), i.cadence]);
+      });
+    });
+    ['policy', 'events'].forEach(function (k) {
+      var i = state.indicators[k];
+      row([state.pillars[k].label, i.score === null || i.score === undefined ? 'No data' : fmt(i.score, 0) + ' of 100', '0 to 100', fmt(w[k] * 100, 1) + '%', srcCell(i), i.cadence]);
+    });
+    tbl.appendChild(tb); wrap.appendChild(tbl); host.appendChild(wrap);
+    ['policy', 'events'].forEach(function (k) {
+      var i = state.indicators[k];
+      if (i.note && state.data_mode !== 'sample') { var e = el('p', 'fine'); e.appendChild(el('strong', null, state.pillars[k].label + '. ')); e.appendChild(document.createTextNode(i.note)); host.appendChild(e); }
+    });
+    var ul = el('ul', 'guard');
+    ['Only trusted sources feed the score and the news list.',
+     'The score moves at most ' + fmt(state.max_move_points_per_update, 1) + ' points per update, so one bad item cannot swing it.',
+     'If a source goes quiet, the page keeps its last good reading and says so.',
+     'Every news item and hazard shows its source and time.',
+     'A manual switch can freeze the score and hide the news list.'].forEach(function (t) { ul.appendChild(el('li', null, t)); });
+    host.appendChild(ul);
+    host.appendChild(el('p', 'fine', 'Data: Copernicus Climate Change Service (ERA5), NOAA, NSIDC, Climate Reanalyzer, Global Carbon Project, Climate Action Tracker and GDACS. Contains modified Copernicus Climate Change Service information.'));
+    host.appendChild(el('p', 'fine', 'The score is illustrative and is not a forecast. It has no connection to the Bulletin of the Atomic Scientists and its Doomsday Clock.'));
+  }
+
+  /* Refresh timer */
+  function tickNext() {
+    var ms = (state ? state.refresh_minutes : 15) * 60000, now = Date.now();
+    if (!nextBoundary) nextBoundary = Math.ceil(now / ms) * ms;
+    if (now >= nextBoundary) { nextBoundary += ms; setTimeout(function () { loadState(false); }, 20000); }
+    var left = Math.max(0, Math.round((nextBoundary - now) / 1000)), mm = Math.floor(left / 60), ss = left % 60;
+    $('next').textContent = 'Next check in ' + (mm < 10 ? '0' : '') + mm + ':' + (ss < 10 ? '0' : '') + ss + '.';
+  }
+
+  /* Boot */
+  function applyState(s) {
+    var first = !booted; state = s;
+    if (first) { booted = true; resetSliders(); }
+    updateWhatIf(); buildChips(); paintFeed(); paintMethod();
+    buildMap();
+    if (sel >= state.hotspots.length) sel = 0;
+    showSpot(sel); paintStatus(); paintDrivers(); paintMap();
+    window.dispatchEvent(new CustomEvent('reckoning:state', { detail: state }));
+  }
+  function getJSON(url) { return fetch(url, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }); }
+  function loadState(isFirst) {
+    return getJSON('data/state.json?t=' + Date.now()).then(function (s) {
+      if (isFirst) return getJSON('data/countries-110m.json').then(function (topo) { world = topojson.feature(topo, topo.objects.countries); borders = topojson.mesh(topo, topo.objects.countries, function (a, b) { return a !== b; }); applyState(s); });
+      applyState(s);
+    }).catch(function () {
+      if (isFirst) $('loadError').hidden = false; else $('updated').textContent = 'Could not refresh. Showing the last update.';
+    });
+  }
+
+  /* Lets the game show its 2050 result on the map. */
+  window.ReckoningPage = {
+    getState: function () { return state; },
+    showPath: function (res, quiet) {
+      if (!res) return;
+      wi = res; wiSource = 'game'; setMode('2050');
+      if (!quiet) { var t = document.querySelector('.s-map'); if (t) t.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' }); }
+    }
+  };
+
+  $('mNow').addEventListener('click', function () { setMode('now'); });
+  $('m50').addEventListener('click', function () { setMode('2050'); });
+  function onSlide() { updateWhatIf(); if (!wi) return; if (mode === 'now') setMode('2050'); else refresh(); }
+  $('cut').addEventListener('input', onSlide);
+  $('ren').addEventListener('input', onSlide);
+  $('reset').addEventListener('click', function () { resetSliders(); updateWhatIf(); refresh(); });
+  window.addEventListener('resize', function () { clearTimeout(resizeT); resizeT = setTimeout(function () { if (state && world && Math.floor($('mapwrap').clientWidth) !== map.cw) { buildMap(); refresh(); } }, 150); });
+  loadState(true).then(function () { tickNext(); setInterval(tickNext, 1000); });
+})();
+</script>
+<script src="game-core.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

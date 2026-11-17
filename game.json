@@ -1,0 +1,121 @@
+{
+  "title": "Be the world leader",
+  "terms": 4,
+  "term_years": 6,
+  "ramp_years": 6,
+  "capital_per_term": 4,
+  "carry_max": 2,
+  "support_start": 60,
+  "support_recovery": 4,
+  "gridlock_below": 30,
+  "note": "Illustrative. Each policy removes a share of the current path's CO₂ emissions, ramping in over six years. Warming follows cumulative CO₂. Real policies overlap and behave less neatly. This is a game, not a forecast.",
+  "policies": [
+    {
+      "id": "carbon-price",
+      "title": "Carbon price",
+      "blurb": "Charge polluters for every tonne of CO₂.",
+      "cost": 3,
+      "cut": 14,
+      "support": -12
+    },
+    {
+      "id": "coal-exit",
+      "title": "Phase out coal power",
+      "blurb": "Close coal plants on a fixed schedule.",
+      "cost": 3,
+      "cut": 12,
+      "support": -8
+    },
+    {
+      "id": "wind-solar",
+      "title": "Wind and solar build-out",
+      "blurb": "Faster permits and grid links for wind and solar.",
+      "cost": 2,
+      "cut": 10,
+      "support": 6
+    },
+    {
+      "id": "end-subsidies",
+      "title": "End fossil fuel subsidies",
+      "blurb": "Stop paying to keep oil, gas and coal cheap.",
+      "cost": 2,
+      "cut": 8,
+      "support": -6
+    },
+    {
+      "id": "firm-power",
+      "title": "Low-carbon firm power and grids",
+      "blurb": "Reliable clean power and a stronger grid.",
+      "cost": 2,
+      "cut": 8,
+      "support": -1
+    },
+    {
+      "id": "electric-vehicles",
+      "title": "Electric vehicles",
+      "blurb": "Subsidies and charging networks.",
+      "cost": 2,
+      "cut": 7,
+      "support": 2
+    },
+    {
+      "id": "efficient-buildings",
+      "title": "Efficient buildings",
+      "blurb": "Insulation and heat pumps for homes and offices.",
+      "cost": 2,
+      "cut": 6,
+      "support": 4
+    },
+    {
+      "id": "clean-industry",
+      "title": "Clean steel and cement",
+      "blurb": "Help factories switch to low-carbon methods.",
+      "cost": 3,
+      "cut": 6,
+      "support": -2
+    },
+    {
+      "id": "public-transport",
+      "title": "Public transport",
+      "blurb": "More trains, buses and safe cycling routes.",
+      "cost": 1,
+      "cut": 4,
+      "support": 5
+    },
+    {
+      "id": "food-waste",
+      "title": "Less food waste",
+      "blurb": "Rules and campaigns that cut waste and meat-heavy meals.",
+      "cost": 1,
+      "cut": 3,
+      "support": -1
+    }
+  ],
+  "verdicts": [
+    {
+      "max_temp_2100": 2.32,
+      "title": "Steward of the century",
+      "line": "You bent the curve about as far as these rules allow."
+    },
+    {
+      "max_temp_2100": 2.4,
+      "title": "Bold reformer",
+      "line": "Strong early action. Most of the gain came from moving first."
+    },
+    {
+      "max_temp_2100": 2.5,
+      "title": "Reluctant reformer",
+      "line": "Real cuts, but too few or too late to change the century much."
+    },
+    {
+      "max_temp_2100": 2.62,
+      "title": "Slow mover",
+      "line": "Some progress. The current path was already doing most of the work."
+    },
+    {
+      "max_temp_2100": 99,
+      "title": "Bystander",
+      "line": "Little changed. The world stays on its current path."
+    }
+  ]
+}

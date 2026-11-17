@@ -1,0 +1,14 @@
+{
+  "status": "proposed",
+  "help": "Trusted sources only. The updater reads only these feeds. fallback is the section used when no keyword matches; null drops the item. region India tags every item from that feed.",
+  "feeds": [
+    { "id": "carbonbrief", "name": "Carbon Brief", "url": "https://www.carbonbrief.org/feed/", "region": "Global", "fallback": "science" },
+    { "id": "guardian", "name": "The Guardian", "url": "https://www.theguardian.com/environment/climate-crisis/rss", "region": "Global", "fallback": "science" },
+    { "id": "unnews", "name": "UN News", "url": "https://news.un.org/feed/subscribe/en/news/topic/climate-and-environment/feed/rss.xml", "region": "Global", "fallback": "policy" },
+    { "id": "cch", "name": "Climate Home News", "url": "https://www.climatechangenews.com/feed/", "region": "Global", "fallback": "policy" },
+    { "id": "icn", "name": "Inside Climate News", "url": "https://insideclimatenews.org/feed/", "region": "Global", "fallback": "science" },
+    { "id": "sciencedaily", "name": "ScienceDaily", "url": "https://www.sciencedaily.com/rss/earth_climate/climate.xml", "region": "Global", "fallback": "science" },
+    { "id": "thehindu", "name": "The Hindu", "url": "https://www.thehindu.com/sci-tech/energy-and-environment/feeder/default.rss", "region": "India", "fallback": null },
+    { "id": "mongabay_in", "name": "Mongabay India", "url": "https://india.mongabay.com/feed/", "region": "India", "fallback": null }
+  ]
+}

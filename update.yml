@@ -1,0 +1,68 @@
+name: Update and deploy
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # GitHub treats this as best effort and may run a few minutes late
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: reckoning-clock
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Tests run on every push and manual run, not on the schedule, so a test fault cannot freeze the live site.
+      - name: Run tests
+        if: github.event_name != 'schedule'
+        run: npm test
+
+      - name: Update data
+        env:
+          # Where the site is published. Used to read the previous score for the movement cap.
+          # Set a repository variable called SITE_URL if you use a custom domain.
+          SITE_URL: ${{ vars.SITE_URL || format('https://{0}.github.io/{1}', github.repository_owner, github.event.repository.name) }}
+        run: node scripts/update.mjs
+
+      # One row a day. The commit also counts as repository activity, which stops GitHub
+      # switching off the schedule after 60 quiet days.
+      - name: Save the daily history row
+        run: |
+          if [ -n "$(git status --porcelain docs/data/history.csv)" ]; then
+            git config user.name "reckoning-clock[bot]"
+            git config user.email "actions@users.noreply.github.com"
+            git add docs/data/history.csv
+            git commit -m "Add daily history row"
+            git push || echo "::warning::Could not save the history row. It will be retried on the next run."
+          fi
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: update
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

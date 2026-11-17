@@ -1,0 +1,354 @@
+{
+  "schema": 1,
+  "updated_at": "2026-11-17T09:30:00Z",
+  "data_mode": "sample",
+  "kill_switch": false,
+  "refresh_minutes": 15,
+  "max_move_points_per_update": 0.5,
+  "scenario": {
+    "year": 2050,
+    "name": "High-emissions 2050 world",
+    "status": "proposed",
+    "basis": "IPCC AR6 high-emissions pathway, 2041 to 2060"
+  },
+  "weights": {
+    "physical": 0.4,
+    "emissions": 0.3,
+    "policy": 0.2,
+    "events": 0.1
+  },
+  "pillars": {
+    "physical": {
+      "label": "Physical climate",
+      "blurb": "What the planet is measurably doing."
+    },
+    "emissions": {
+      "label": "Emissions",
+      "blurb": "What we are putting into the air."
+    },
+    "policy": {
+      "label": "Policy and government action",
+      "blurb": "What governments are doing about it."
+    },
+    "events": {
+      "label": "Extreme events",
+      "blurb": "Damage happening right now."
+    }
+  },
+  "indicators": {
+    "physical": [
+      {
+        "id": "temp",
+        "label": "Global temperature",
+        "value": 1.52,
+        "unit": "°C above 1850–1900, 30-day average",
+        "short": "°C",
+        "zero": 0,
+        "midnight": 2.4,
+        "decimals": 2,
+        "source": "Copernicus ERA5, 30-day average",
+        "cadence": "Daily",
+        "url": "https://pulse.climate.copernicus.eu/"
+      },
+      {
+        "id": "seaice",
+        "label": "Sea ice below average",
+        "value": 8.5,
+        "unit": "% below the 1981–2010 average",
+        "short": "%",
+        "zero": 0,
+        "midnight": 20,
+        "decimals": 1,
+        "source": "NSIDC Sea Ice Index, north plus south",
+        "cadence": "Daily",
+        "url": "https://nsidc.org/data/seaice_index"
+      },
+      {
+        "id": "sst",
+        "label": "Ocean surface heat",
+        "value": 0.35,
+        "unit": "°C above the 1982–2011 average, 60°S to 60°N",
+        "short": "°C",
+        "zero": 0,
+        "midnight": 1,
+        "decimals": 2,
+        "source": "NOAA OISST via Climate Reanalyzer",
+        "cadence": "Daily",
+        "url": "https://climatereanalyzer.org/clim/sst_daily/"
+      }
+    ],
+    "emissions": [
+      {
+        "id": "co2",
+        "label": "Atmospheric CO₂",
+        "value": 430,
+        "unit": "parts per million",
+        "short": "ppm",
+        "zero": 280,
+        "midnight": 540,
+        "decimals": 0,
+        "source": "NOAA Mauna Loa, 7-day average",
+        "cadence": "Daily",
+        "url": "https://gml.noaa.gov/ccgg/trends/"
+      },
+      {
+        "id": "flow",
+        "label": "Global CO₂ emissions",
+        "value": 38,
+        "unit": "billion tonnes a year",
+        "short": "Gt",
+        "zero": 0,
+        "midnight": 60,
+        "decimals": 0,
+        "source": "Global Carbon Budget",
+        "cadence": "Daily",
+        "url": "https://globalcarbonbudget.org/"
+      }
+    ],
+    "policy": {
+      "score": 55,
+      "source": "Rules plus AI classification",
+      "cadence": "Every 15 minutes",
+      "note": "Sample score. The live version scores national targets, clean-power share and carbon pricing with fixed rules, then lets classified news items nudge it within the movement cap."
+    },
+    "events": {
+      "score": 50,
+      "source": "Official hazard feeds",
+      "cadence": "Every 15 minutes",
+      "note": "Sample score. The live version rates the last 30 days of heatwaves, floods, wildfires and cyclones by count and severity."
+    }
+  },
+  "whatif": {
+    "start_year": 2026,
+    "end_year": 2050,
+    "outlook_year": 2100,
+    "emissions_now_gt": 38,
+    "power_emissions_gt": 14,
+    "renewable_share_now": 32,
+    "default_cut_pct": 20,
+    "default_renewable_pct": 55,
+    "tcre_c_per_gt": 0.00045,
+    "ppm_per_gt": 0.0576,
+    "committed_c": 0.16
+  },
+  "sections": [
+    {
+      "id": "policy",
+      "label": "Policy and government"
+    },
+    {
+      "id": "science",
+      "label": "Science and research"
+    },
+    {
+      "id": "disasters",
+      "label": "Disasters and extreme weather"
+    },
+    {
+      "id": "energy",
+      "label": "Energy and emissions"
+    }
+  ],
+  "feed": {
+    "policy": [
+      {
+        "title": "Sample entry: a government tightens its 2030 emissions target",
+        "region": "India",
+        "source": "Sample source",
+        "published": "2026-11-17T08:10:00Z",
+        "url": null,
+        "sample": true
+      },
+      {
+        "title": "Sample entry: a regional carbon price takes effect",
+        "region": "Global",
+        "source": "Sample source",
+        "published": "2026-11-16T17:45:00Z",
+        "url": null,
+        "sample": true
+      }
+    ],
+    "science": [
+      {
+        "title": "Sample entry: a new study revises the pace of ice-sheet loss",
+        "region": "Global",
+        "source": "Sample source",
+        "published": "2026-11-17T06:30:00Z",
+        "url": null,
+        "sample": true
+      },
+      {
+        "title": "Sample entry: a monthly bulletin confirms a record-warm month",
+        "region": "Global",
+        "source": "Sample source",
+        "published": "2026-11-15T11:00:00Z",
+        "url": null,
+        "sample": true
+      }
+    ],
+    "disasters": [
+      {
+        "title": "Sample entry: a heatwave breaks regional temperature records",
+        "region": "India",
+        "source": "Sample source",
+        "published": "2026-11-17T05:15:00Z",
+        "url": null,
+        "sample": true
+      },
+      {
+        "title": "Sample entry: a tropical cyclone makes landfall",
+        "region": "Global",
+        "source": "Sample source",
+        "published": "2026-11-16T21:20:00Z",
+        "url": null,
+        "sample": true
+      }
+    ],
+    "energy": [
+      {
+        "title": "Sample entry: record solar capacity added in a single quarter",
+        "region": "India",
+        "source": "Sample source",
+        "published": "2026-11-17T07:00:00Z",
+        "url": null,
+        "sample": true
+      },
+      {
+        "title": "Sample entry: coal output falls year on year in a major economy",
+        "region": "Global",
+        "source": "Sample source",
+        "published": "2026-11-14T14:40:00Z",
+        "url": null,
+        "sample": true
+      }
+    ]
+  },
+  "hotspots": [
+    {
+      "id": "h1",
+      "type": "heat",
+      "lon": 77.2,
+      "lat": 28.6,
+      "sev": 3,
+      "people_m": 38,
+      "region": "India",
+      "title": "Sample entry: a heatwave breaks regional temperature records",
+      "source": "Sample source",
+      "published": "2026-11-17T08:10:00Z",
+      "url": null,
+      "sample": true
+    },
+    {
+      "id": "h2",
+      "type": "heat",
+      "lon": 2,
+      "lat": 14,
+      "sev": 2,
+      "people_m": 21,
+      "region": "Africa",
+      "title": "Sample entry: heat stress warnings issued across a wide region",
+      "source": "Sample source",
+      "published": "2026-11-17T06:05:00Z",
+      "url": null,
+      "sample": true
+    },
+    {
+      "id": "h3",
+      "type": "heat",
+      "lon": -112,
+      "lat": 34,
+      "sev": 2,
+      "people_m": 9,
+      "region": "North America",
+      "title": "Sample entry: a multi-day heat dome sets seasonal records",
+      "source": "Sample source",
+      "published": "2026-11-16T22:30:00Z",
+      "url": null,
+      "sample": true
+    },
+    {
+      "id": "f1",
+      "type": "fire",
+      "lon": 148,
+      "lat": -35,
+      "sev": 3,
+      "people_m": 0.4,
+      "region": "Australia",
+      "title": "Sample entry: bushfires spread under extreme fire danger",
+      "source": "Sample source",
+      "published": "2026-11-17T07:20:00Z",
+      "url": null,
+      "sample": true
+    },
+    {
+      "id": "f2",
+      "type": "fire",
+      "lon": -120,
+      "lat": 55,
+      "sev": 2,
+      "people_m": 0.2,
+      "region": "North America",
+      "title": "Sample entry: wildfire smoke reaches distant cities",
+      "source": "Sample source",
+      "published": "2026-11-17T03:45:00Z",
+      "url": null,
+      "sample": true
+    },
+    {
+      "id": "f3",
+      "type": "fire",
+      "lon": -60,
+      "lat": -8,
+      "sev": 1,
+      "people_m": 1.2,
+      "region": "South America",
+      "title": "Sample entry: fire counts rise in a dry season",
+      "source": "Sample source",
+      "published": "2026-11-16T18:00:00Z",
+      "url": null,
+      "sample": true
+    },
+    {
+      "id": "w1",
+      "type": "flood",
+      "lon": 90,
+      "lat": 24,
+      "sev": 3,
+      "people_m": 14,
+      "region": "Asia",
+      "title": "Sample entry: river flooding displaces thousands",
+      "source": "Sample source",
+      "published": "2026-11-17T05:15:00Z",
+      "url": null,
+      "sample": true
+    },
+    {
+      "id": "w2",
+      "type": "flood",
+      "lon": 15,
+      "lat": 50,
+      "sev": 2,
+      "people_m": 0.8,
+      "region": "Europe",
+      "title": "Sample entry: heavy rain causes flash floods",
+      "source": "Sample source",
+      "published": "2026-11-16T21:20:00Z",
+      "url": null,
+      "sample": true
+    },
+    {
+      "id": "w3",
+      "type": "flood",
+      "lon": 105,
+      "lat": 15,
+      "sev": 1,
+      "people_m": 6,
+      "region": "Asia",
+      "title": "Sample entry: monsoon rain overwhelms drainage",
+      "source": "Sample source",
+      "published": "2026-11-16T12:40:00Z",
+      "url": null,
+      "sample": true
+    }
+  ]
+}
